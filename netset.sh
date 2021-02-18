@@ -122,6 +122,28 @@ if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]
         echo "systemd-networkd is not running"
         exit
     fi
+elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]];then
+    echo "select a new connectionname"
+    read $nmc
+    nmcli networking on
+    nmcli connection add type ethernet con-name "$nmc"
+    nmcli connection modify "$nmc" connection.autoconnect yes
+    nmcli connection modify "$nmc" connection.autoconnect-priority -999
+    nmcli connection modify "$nmc" connection.autoconnect-retries -1
+    nmcli connection modify "$nmc" connection.read-only no
+    nmcli connection modify "$nmc" connection.autoconnect-slaves -1
+    nmcli connection modify "$nmc" connection.wait-device-timeout -1
+    nmcli connection modify "$nmc" connection.autoconnect-retries -1
+    nmcli connection modify "$nmc" connection.autoconnect-retries -1
+    echo "----------------------------"
+    echo "input the ip to set (cidr notion also accepted)"
+    echo "----------------------------"
+    read $nmcip
+    nmcli con mod "$nmc" ipv4.method manual ipv4.addr "$nmcip"
+    # sets hetzner dns
+    nmcli con modify "$nmc" +ipv4.dns 213.133.98.98
+    echo "connection has been set (restart network manager if necessary)"
+    exit
 else
     echo "selected manager not supported"
     exit

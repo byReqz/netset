@@ -2,7 +2,16 @@
 # license: gpl-3
 echo "which networkmanager do you want to use?"
 echo "please enter the name or number of your choice"
-echo "1. systemd-resolved"
+if [[ -n $(systemctl --version | grep -e "systemd") ]];then
+    echo "1. systemd-resolved [installed]"
+else
+    echo "1. systemd-resolved [not installed]"
+fi
+if [[ -n $(NetworkManager -h | grep -e "Usage:") ]];then
+    echo "2. NetworkManager [installed]"
+else
+    echo "2. NetworkManager [not installed]"
+fi
 read $c1
 if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]];then
     if [[ -z $(sudo systemctl status systemd-networkd | grep -e "dead") ]];then

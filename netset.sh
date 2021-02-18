@@ -142,8 +142,6 @@ elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]
     nmcli connection modify "$nmc" connection.read-only no
     nmcli connection modify "$nmc" connection.autoconnect-slaves -1
     nmcli connection modify "$nmc" connection.wait-device-timeout -1
-    nmcli connection modify "$nmc" connection.autoconnect-retries -1
-    nmcli connection modify "$nmc" connection.autoconnect-retries -1
     echo "----------------------------"
     echo "input the ip to set (cidr notion also accepted)"
     echo "----------------------------"

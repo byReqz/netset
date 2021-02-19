@@ -12,7 +12,12 @@ if [[ -n $(NetworkManager -h | grep -e "Usage:") ]];then
 else
     echo "2. NetworkManager [not installed]"
 fi
-read $c1
+if [[ -n $(ls /etc | grep -e "netplan") ]];then
+    echo "3. netplan [installed]"
+else
+    echo "3. netplan [not installed]"
+fi
+read c1
 if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]];then
     if [[ -z $(sudo systemctl status systemd-networkd | grep -e "dead") ]];then
         if [[ $(ls -l /etc/systemd/network | wc -l) != 0 ]];then
@@ -133,7 +138,7 @@ if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]
     fi
 elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]];then
     echo "select a new connectionname"
-    read $nmc
+    read nmc
     nmcli networking on
     nmcli connection add type ethernet con-name "$nmc"
     nmcli connection modify "$nmc" connection.autoconnect yes
@@ -145,12 +150,57 @@ elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]
     echo "----------------------------"
     echo "input the ip to set (cidr notion also accepted)"
     echo "----------------------------"
-    read $nmcip
+    read nmcip
     nmcli con mod "$nmc" ipv4.method manual ipv4.addr "$nmcip"
     # sets hetzner dns
     nmcli con modify "$nmc" +ipv4.dns 213.133.98.98
     echo "connection has been set (restart network manager if necessary)"
     exit
+elif [[ "$c1" == "3" ]] || [[ "$c1" == "3." ]] || [[ "$c1" == "netplan" ]];then
+    echo "please enter the interface name"
+    echo "----------------------------"
+    ip l
+    echo "----------------------------"
+    read npif
+    echo "network:" > $PWD/.netplan.yaml
+    echo -e "    version: 2" >> $PWD/.netplan.yaml
+    echo -e "    renderer: networkd" >> $PWD/.netplan.yaml
+    echo -e "    ethernets:" >> $PWD/.netplan.yaml
+    echo -e "        $npif:" >> $PWD/.netplan.yaml
+    echo -e "            addresses:" >> $PWD/.netplan.yaml
+    if [[ -n $(ip a | grep -e "$npif") ]];then
+        echo "please enter the ip adress to set (with cidr notation)"
+        read npip
+        echo -e "                 - "$npip"" >> $PWD/.netplan.yaml
+        echo "please enter the gateway adress to set"
+        read npgw
+        echo -e "            gateway4: "$npgw"" >> $PWD/.netplan.yaml
+        echo -e "            nameservers:" >> $PWD/.netplan.yaml
+        echo -e "                search: [mydomain, otherdomain]" >> $PWD/.netplan.yaml
+        echo "please enter the dns servers adress, leave empty for default"
+        read npdns
+        if [[ -z "$npdns" ]];then
+            echo -e "                addresses: [213.133.98.98]" >> $PWD/.netplan.yaml
+        else
+            echo -e "                addresses: ["$npdns"]" >> $PWD/.netplan.yaml
+        fi
+        echo "----------------------------"
+        echo "config has been generated in the current directory"
+        echo "should the config be installed now? (y/N)"
+        echo "----------------------------"
+        read $npyn2
+        if [[ "$npyn2" == "y" ]] || [[ "$npyn2" == "Y" ]] || [[ "$npyn2" == "yes" ]];then
+            mv .netplan.yaml /etc/netplan/netplan.yaml
+            exit
+        else
+            mv .netplan.yaml netplan.yaml
+            exit
+        fi
+    else
+        echo "interface not found, exiting"
+        exit
+    fi
+
 else
     echo "selected manager not supported"
     exit

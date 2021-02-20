@@ -7,7 +7,7 @@ if [[ -n $(systemctl --version | grep -e "systemd") ]];then
 else
     echo "1. systemd-resolved [not installed]"
 fi
-if [[ -n $(NetworkManager -h | grep -e "Usage:") ]];then
+if [[ -n $(ls /etc | grep -e "NetworkManager") ]];then
     echo "2. NetworkManager [installed]"
 else
     echo "2. NetworkManager [not installed]"
@@ -137,30 +137,82 @@ if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]
         exit
     fi
 elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]];then
+    echo "======================"
     echo "select a new connectionname"
+    echo "======================"
     read nmc
-    nmcli networking on
-    nmcli connection add type ethernet con-name "$nmc"
-    nmcli connection modify "$nmc" connection.autoconnect yes
-    nmcli connection modify "$nmc" connection.autoconnect-priority -999
-    nmcli connection modify "$nmc" connection.autoconnect-retries -1
-    nmcli connection modify "$nmc" connection.read-only no
-    nmcli connection modify "$nmc" connection.autoconnect-slaves -1
-    nmcli connection modify "$nmc" connection.wait-device-timeout -1
-    echo "----------------------------"
-    echo "input the ip to set (cidr notion also accepted)"
-    echo "----------------------------"
+    echo "======================"
+    echo "type the name of the interface to use"
+    echo ""
+    ip a
+    echo "======================"
+    read nmcif
+    echo "======================"
+    echo "input the ip to set (cidr notion also accepted, defaults to /24 if empty)"
+    echo "======================"
     read nmcip
-    nmcli con mod "$nmc" ipv4.method manual ipv4.addr "$nmcip"
-    # sets hetzner dns
-    nmcli con modify "$nmc" +ipv4.dns 213.133.98.98
-    echo "connection has been set (restart network manager if necessary)"
+    if [[ -z "$(echo $nmcip | grep -e "/")" ]];then
+        nmcip=""$nmcip"/24"
+    fi
+    echo "======================"
+    echo "input the gateway adress to set"
+    echo "======================"
+    read nmcgw
+    echo "======================"
+    echo "input the dns server adress(es) to set"
+    echo "leave empty for default"
+    echo "======================"
+    read nmcdns
+    if [[ -z "$nmcdns" ]];then
+        # those are the default hetzner dns servers
+        nmcdns="213.133.98.98"
+    fi
+    echo -e "[connection]" > ."$nmc".nmconnection
+    echo -e "id="$nmc"" >> ."$nmc".nmconnection
+    echo -e "uuid=$(curl -s "http://uuid4.com/?count=1&format=raw")" >> ."$nmc".nmconnection
+    echo -e "type=ethernet" >> ."$nmc".nmconnection
+    echo -e "autoconnect-priority=1" >> ."$nmc".nmconnection
+    echo -e "interface-name="$nmcif"" >> ."$nmc".nmconnection
+# not sure if this actually works
+#    echo -e "permissions=user:*:;" >> ."$nmc".nmconnection
+    echo -e "timestamp=$(date +%s)" >> ."$nmc".nmconnection
+    echo -e "" >> ."$nmc".nmconnection
+    echo -e "[ethernet]" >> ."$nmc".nmconnection
+    echo -e "auto-negotiate=true" >> ."$nmc".nmconnection
+    echo -e "mac-address-blacklist=" >> ."$nmc".nmconnection
+    echo -e "" >> ."$nmc".nmconnection
+    echo -e "[ipv4]" >> ."$nmc".nmconnection
+    echo -e "address1="$nmcip","$nmcgw"" >> ."$nmc".nmconnection
+    echo -e "dns="$nmcdns";" >> ."$nmc".nmconnection
+    echo -e "dns-search=" >> ."$nmc".nmconnection
+    echo -e "method=manual" >> ."$nmc".nmconnection
+    echo -e "" >> ."$nmc".nmconnection
+    echo -e "[ipv6]" >> ."$nmc".nmconnection
+    echo -e "addr-gen-mode=stable-privacy" >> ."$nmc".nmconnection
+    echo -e "dns-search=" >> ."$nmc".nmconnection
+    echo -e "method=auto" >> ."$nmc".nmconnection
+    echo -e "" >> ."$nmc".nmconnection
+    echo -e "[proxy]" >> ."$nmc".nmconnection
+    echo "======================"
+    echo "the connection file has been created in $PWD"
+    echo "should it be installed right now? (requires root) [y/N]"
+    echo "======================"
+    read nmcyn1
+    if [[ "$nmcyn1" == "y" ]] || [[ "$nmcyn1" == "Y" ]] || [[ "$nmcyn1" == "yes" ]];then
+        mv ."$nmc".nmconnection /etc/NetworkManager/system-connections/"$nmc".nmconnection
+        chown root:root /etc/NetworkManager/system-connections/"$nmc".nmconnection
+        chmod 600 /etc/NetworkManager/system-connections/"$nmc".nmconnection
+        systemctl restart NetworkManager
+    else
+        mv ."$nmc".nmconnection "$nmc".nmconnection
+        exit
+    fi
     exit
 elif [[ "$c1" == "3" ]] || [[ "$c1" == "3." ]] || [[ "$c1" == "netplan" ]];then
     echo "please enter the interface name"
-    echo "----------------------------"
+    echo "======================"
     ip l
-    echo "----------------------------"
+    echo "======================"
     read npif
     echo "network:" > $PWD/.netplan.yaml
     echo -e "    version: 2" >> $PWD/.netplan.yaml
@@ -184,10 +236,10 @@ elif [[ "$c1" == "3" ]] || [[ "$c1" == "3." ]] || [[ "$c1" == "netplan" ]];then
         else
             echo -e "                addresses: ["$npdns"]" >> $PWD/.netplan.yaml
         fi
-        echo "----------------------------"
+        echo "======================"
         echo "config has been generated in the current directory"
         echo "should the config be installed now? (y/N)"
-        echo "----------------------------"
+        echo "======================"
         read $npyn2
         if [[ "$npyn2" == "y" ]] || [[ "$npyn2" == "Y" ]] || [[ "$npyn2" == "yes" ]];then
             mv .netplan.yaml /etc/netplan/netplan.yaml

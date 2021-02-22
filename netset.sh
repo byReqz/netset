@@ -17,6 +17,11 @@ if [[ -n $(ls /etc | grep -e "netplan") ]];then
 else
     echo "3. netplan [not installed]"
 fi
+if [[ -n $(ls /etc | grep -e "netctl") ]];then
+    echo "4. netctl [installed]"
+else
+    echo "4. netctl [not installed]"
+fi
 read c1
 if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]];then
     if [[ -z $(sudo systemctl status systemd-networkd | grep -e "dead") ]];then

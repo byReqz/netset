@@ -214,28 +214,44 @@ elif [[ "$c1" == "3" ]] || [[ "$c1" == "3." ]] || [[ "$c1" == "netplan" ]];then
     ip l
     echo "======================"
     read npif
-    echo "network:" > $PWD/.netplan.yaml
-    echo -e "    version: 2" >> $PWD/.netplan.yaml
-    echo -e "    renderer: networkd" >> $PWD/.netplan.yaml
-    echo -e "    ethernets:" >> $PWD/.netplan.yaml
-    echo -e "        $npif:" >> $PWD/.netplan.yaml
-    echo -e "            addresses:" >> $PWD/.netplan.yaml
     if [[ -n $(ip a | grep -e "$npif") ]];then
+        echo "======================"
+        echo "select the renderer to use, defaults to networkd"
+        if [[ -n $(ls /etc | grep -e "NetworkManager") ]];then
+            echo "- Networkmanager [nm]"
+        fi
+        if [[ -n $(systemctl --version | grep -e "systemd") ]];then
+            echo "- systemd-networkd [nd]"
+        fi
+        echo "======================"
+        read nprd
+        if [[ "$nprd" == "nm" ]] || [[ "$nprd" == "networkmanager" ]] || [[ "$nprd" == "NetworkManager" ]];then
+            nprd="NetworkManager"
+        elif [[ "$nprd" == "nd" ]] || [[ "$nprd" == "networkd" ]] || [[ "$nprd" == "systemd-networkd" ]];then
+            nprd="networkd"
+        else
+            nprd="networkd"
+        fi
         echo "please enter the ip adress to set (with cidr notation)"
         read npip
-        echo -e "                 - "$npip"" >> $PWD/.netplan.yaml
         echo "please enter the gateway adress to set"
         read npgw
-        echo -e "            gateway4: "$npgw"" >> $PWD/.netplan.yaml
-        echo -e "            nameservers:" >> $PWD/.netplan.yaml
-        echo -e "                search: [mydomain, otherdomain]" >> $PWD/.netplan.yaml
         echo "please enter the dns servers adress, leave empty for default"
         read npdns
         if [[ -z "$npdns" ]];then
-            echo -e "                addresses: [213.133.98.98]" >> $PWD/.netplan.yaml
-        else
-            echo -e "                addresses: ["$npdns"]" >> $PWD/.netplan.yaml
+            npdns="213.133.98.98"
         fi
+        echo "network:" > $PWD/.netplan.yaml
+        echo -e "    version: 2" >> $PWD/.netplan.yaml
+        echo -e "    renderer: "$nprd"" >> $PWD/.netplan.yaml
+        echo -e "    ethernets:" >> $PWD/.netplan.yaml
+        echo -e "        "$npif":" >> $PWD/.netplan.yaml
+        echo -e "            addresses:" >> $PWD/.netplan.yaml
+        echo -e "                 - "$npip"" >> $PWD/.netplan.yaml
+        echo -e "            gateway4: "$npgw"" >> $PWD/.netplan.yaml
+        echo -e "            nameservers:" >> $PWD/.netplan.yaml
+        echo -e "                search: [mydomain, otherdomain]" >> $PWD/.netplan.yaml
+        echo -e "                addresses: ["$npdns"]" >> $PWD/.netplan.yaml
         echo "======================"
         echo "config has been generated in the current directory"
         echo "should the config be installed now? (y/N)"

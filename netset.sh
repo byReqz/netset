@@ -203,8 +203,16 @@ elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]
         chown root:root /etc/NetworkManager/system-connections/"$nmc".nmconnection
         chmod 600 /etc/NetworkManager/system-connections/"$nmc".nmconnection
         systemctl restart NetworkManager
+        nmcli connection up "$nmc"
     else
         mv ."$nmc".nmconnection "$nmc".nmconnection
+        echo "======================"
+        echo "the config should be copied to:"
+        echo -e "\e[31m/etc/NetworkManager/system-connections/\e[0m"
+        echo "and can be activated with:"
+        echo -e "\e[31mnmcli connection up "$nmc"\e[0m"
+        echo -e "remember to set permissions to \e[31mroot/600\e[0m"
+        echo "======================"
         exit
     fi
     exit
@@ -262,13 +270,72 @@ elif [[ "$c1" == "3" ]] || [[ "$c1" == "3." ]] || [[ "$c1" == "netplan" ]];then
             exit
         else
             mv .netplan.yaml netplan.yaml
+            echo "======================"
+            echo "the config should be copied to:"
+            echo -e "\e[31m/etc/netplan/\e[0m"
+            echo "and can be activated with:"
+            echo -e "\e[31mnetplan apply\e[0m"
+            echo "======================"
             exit
         fi
     else
         echo "interface not found, exiting"
         exit
     fi
-
+elif [[ "$c1" == "4" ]] || [[ "$c1" == "4." ]] || [[ "$c1" == "netctl" ]];then
+    echo "======================"
+    echo "type the name of the interface to use"
+    echo "======================"
+    ip a
+    echo "======================"
+    read nctlif
+    echo "======================"
+    echo "input the ip to set (cidr notion needed, defaults to /24)"
+    echo "======================"
+    read nctlip
+    if [[ -z "$(echo $nctlip | grep -e "/")" ]];then
+        nctlip=""$nctlip"/24"
+    fi
+    echo "======================"
+    echo "input the gateway adress to set"
+    echo "======================"
+    read nctlgw
+    echo "======================"
+    echo "input the dns server adress(es) to set"
+    echo "leave empty for default"
+    echo "======================"
+    read nctldns
+    if [[ -z "$nctldns" ]];then
+        # those are the default hetzner dns servers
+        nctldns="213.133.98.98"
+    fi
+    echo -e "Interface="$nctlif"" >> .netctl
+    echo -e "Connection=ethernet" >> .netctl
+    echo -e "IP=static" >> .netctl
+    echo -e "Address=('"$nctlip"')" >> .netctl
+    echo -e "Gateway='"$nctlgw"'" >> .netctl
+    echo -e "DNS=('"$nctldns"')" >> .netctl
+    echo "======================"
+    echo "config has been generated in the current directory"
+    echo "should the config be installed now? (y/N)"
+    echo "======================"
+    read $npyn2
+    if [[ "$npyn2" == "y" ]] || [[ "$npyn2" == "Y" ]] || [[ "$npyn2" == "yes" ]];then
+        mv .netctl /etc/netctl/
+        netctl enable netctl
+        netctl start netctl
+        exit
+    else
+        mv .netctl netctl-config
+        echo "======================"
+        echo "the config should be copied to:"
+        echo -e "\e[31m/etc/netctl\e[0m"
+        echo "and activated with"
+        echo -e "\e[31mnetctl enable netctl-config\e[0m"
+        echo -e "\e[31mnetctl start netctl-config\e[0m"
+        echo "======================"
+        exit
+    fi
 else
     echo "selected manager not supported"
     exit

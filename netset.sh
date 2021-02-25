@@ -22,6 +22,11 @@ if [[ -n $(ls /etc | grep -e "netctl") ]];then
 else
     echo "4. netctl [not installed]"
 fi
+if [[ -n $(ls /etc | grep -e "network") ]];then
+    echo "5. interfaces (ifup/ifdown) [installed]"
+else
+    echo "5. interfaces (ifup/ifdown) [not installed]"
+fi
 read c1
 if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]];then
     if [[ -z $(sudo systemctl status systemd-networkd | grep -e "dead") ]];then
@@ -338,6 +343,57 @@ elif [[ "$c1" == "4" ]] || [[ "$c1" == "4." ]] || [[ "$c1" == "netctl" ]];then
         echo "and activated with"
         echo -e "\e[31mnetctl enable netctl-config\e[0m"
         echo -e "\e[31mnetctl start netctl-config\e[0m"
+        echo "======================"
+        exit
+    fi
+elif [[ "$c1" == "5" ]] || [[ "$c1" == "5." ]] || [[ "$c1" == "interfaces" ]];then
+    echo "======================"
+    echo "type the name of the interface to use"
+    echo "======================"
+    ip a
+    echo "======================"
+    read ifif
+    echo "======================"
+    echo "input the ip to set (without cidr notion)"
+    echo "======================"
+    read ifip
+    echo "======================"
+    echo "input the netmask to set (long form)"
+    echo "defaults to 255.255.255.0 if empty"
+    echo "======================"
+    read ifnm
+    if [[ -z "$(echo $ifnm | grep -e ".")" ]];then
+        ifnm="255.255.255.0"
+    fi
+    echo "======================"
+    echo "input the gateway adress to set"
+    echo "======================"
+    read ifgw
+    echo -e "auto lo" > .interfaces
+    echo -e "iface lo inet loopback" >> .interfaces
+    echo -e "" >> .interfaces
+    echo -e "auto "$ifif"" >> .interfaces
+    echo -e "allow-hotplug "$ifif"" >> .interfaces
+    echo -e "iface "$ifif" inet manual" >> .interfaces
+    echo -e "    adress "$ifip"" >> .interfaces
+    echo -e "    netmask "$ifnm"" >> .interfaces
+    echo -e "    gateway "$ifgw"" >> .interfaces
+    echo "======================"
+    echo "config has been generated in the current directory"
+    echo "should the config be installed now? (y/N)"
+    echo "======================"
+    read $ifyn2
+    if [[ "$ifyn2" == "y" ]] || [[ "$ifyn2" == "Y" ]] || [[ "$ifyn2" == "yes" ]];then
+        mv .interfaces /etc/network/
+        ifup "$ifif"
+        exit
+    else
+        mv .interfaces interfaces-config
+        echo "======================"
+        echo "the config should be copied to:"
+        echo -e "\e[31m/etc/network/ and renamed to interfaces\e[0m"
+        echo "and activated with"
+        echo -e "\e[31mifup "$ifif"\e[0m"
         echo "======================"
         exit
     fi

@@ -29,121 +29,76 @@ else
 fi
 read c1
 if [[ "$c1" == "1" ]] || [[ "$c1" == "1." ]] || [[ "$c1" == "systemd-resolved" ]];then
-    if [[ -z $(sudo systemctl status systemd-networkd | grep -e "dead") ]];then
-        if [[ $(ls -l /etc/systemd/network | wc -l) != 0 ]];then
-            echo "warning, there already are configs present"
-            echo "do you want to continue? (Y/n)"
-            read continue
-            if [[ "$continue" == y ]] || [[ "$continue" == yes ]] || [[ -z "$continue" ]];then
-                touch "/etc/systemd/network/10-ethernet.network"
-                echo "[Match]" >> "/etc/systemd/network/10-ethernet.network"
-                echo "Do you want to configure by Interfacename or MAC? (ifn/MAC)"
-                read choice1
-                if [[ "$choice1" =~ "ifn" ]];then
-                    echo "======================"
-                    echo "Please type out the Interfacename"
-                    echo "======================"
-                    ip link show
-                    read interface
-                    echo "Name=$interface" >> "/etc/systemd/network/10-ethernet.network"
-                    echo "" >> "/etc/systemd/network/10-ethernet.network"
-                elif [[ "$choice1" =~ "mac" ]];then
-                    echo "======================"
-                    echo "Please type out the MAC-Adress"
-                    echo "======================"
-                    read mac
-                    echo "MACAdress=$mac" >> "/etc/systemd/network/10-ethernet.network"
-                    echo "" >> "/etc/systemd/network/10-ethernet.network"
-                else
-                    echo "no proper input provided"
-                    exit
-                fi
-                echo "[Network]" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the IP-Adress you want to set (with CIDR)"
-                echo "======================"
-                read ipstatic
-                echo "Address=$ipstatic" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the Gateway adress"
-                echo "======================"
-                read gateway
-                echo "Gateway=$gateway" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the main DNS address (blank for none)"
-                echo "======================"
-                read dns
-                if [[ -z "$dns" ]];then
-                    echo "======================"
-                    echo "Interface has been configured"
-                    echo "restart systemd-networkd to apply the profile"
-                    echo "======================"
-                    exit
-                fi
-                echo "DNS=$dns" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Interface has been configured"
-                echo "restart systemd-networkd to apply the profile"
-                echo "======================"
-                exit
-            else
-                exit
-            fi
-        else
-                touch "/etc/systemd/network/10-ethernet.network"
-                echo "[Match]" >> "/etc/systemd/network/10-ethernet.network"
-                echo "Do you want to configure by Interfacename or MAC? (ifn/MAC)"
-                read choice1
-                if [[ "$choice1" =~ "ifn" ]];then
-                    echo "======================"
-                    echo "Please type out the Interfacename"
-                    echo "======================"
-                    ip link show
-                    read interface
-                    echo "Name=$interface" >> "/etc/systemd/network/10-ethernet.network"
-                    echo "" >> "/etc/systemd/network/10-ethernet.network"
-                elif [[ "$choice1" =~ "mac" ]];then
-                    echo "======================"
-                    echo "Please type out the MAC-Adress"
-                    echo "======================"
-                    read mac
-                    echo "MACAdress=$mac" >> "/etc/systemd/network/10-ethernet.network"
-                    echo "" >> "/etc/systemd/network/10-ethernet.network"
-                else
-                    echo "no proper input provided"
-                    exit
-                fi
-                echo "[Network]" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the IP-Adress you want to set (with CIDR)"
-                echo "======================"
-                read ipstatic
-                echo "Address=$ipstatic" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the Gateway adress"
-                echo "======================"
-                read gateway
-                echo "Gateway=$gateway" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Please type out the main DNS address (blank for none)"
-                echo "======================"
-                read dns
-                if [[ -z "$dns" ]];then
-                    echo "======================"
-                    echo "Interface has been configured"
-                    echo "restart systemd-networkd to apply the profile"
-                    echo "======================"
-                    exit
-                fi
-                echo "DNS=$dns" >> "/etc/systemd/network/10-ethernet.network"
-                echo "======================"
-                echo "Interface has been configured"
-                echo "restart systemd-networkd to apply the profile"
-                echo "======================"
-                exit
-        fi
+    echo "Do you want to configure by Interfacename or MAC? (ifn/MAC)"
+    read choice1
+    if [[ "$choice1" =~ "ifn" ]];then
+        echo "======================"
+        echo "type the name of the interface to use"
+        echo "======================"
+        ip a
+        echo "======================"
+        read sndif
+        sndif="Name="$sndif""
+    elif [[ "$choice1" =~ "mac" ]];then
+        echo "======================"
+        echo "Please type out the MAC-Adress"
+        echo "======================"
+        ip a
+        echo "======================"
+        read sndif
+        sndif="MACAdress="$sndif""
     else
-        echo "systemd-networkd is not running"
+        echo "empty input, exiting"
+        exit
+    fi
+    echo "======================"
+    echo "input the ip to set (cidr notion needed, defaults to /24)"
+    echo "======================"
+    read sndip
+    if [[ -z "$(echo $sndip | grep -e "/")" ]];then
+        sndip=""$sndip"/24"
+    fi
+    echo "======================"
+    echo "input the gateway adress to set"
+    echo "======================"
+    read sndgw
+    echo "======================"
+    echo "input the dns server adress to set"
+    echo "leave empty for default"
+    echo "======================"
+    read snddns
+    if [[ -z "$snddns" ]];then
+        # those are the default hetzner dns servers
+        snddns="213.133.98.98"
+    fi
+    echo "[Match]" > ".systemd.network"
+    echo "$sndif" >> ".systemd.network"
+    echo "" >> ".systemd.network"
+    echo "[Network]" >> ".systemd.network"
+    echo "Address=$sndip" >> ".systemd.network"
+    echo "Gateway=$sndgw" >> ".systemd.network"
+    echo "DNS=$snddns" >> ".systemd.network"
+    echo "======================"
+    echo "config has been generated in the current directory"
+    echo "should the config be installed now? (y/N)"
+    echo "======================"
+    read $sndyn2
+    if [[ "$sndyn2" == "y" ]] || [[ "$sndyn2" == "Y" ]] || [[ "$sndyn2" == "yes" ]];then
+        mv .systemd.network "/etc/systemd/network/10-ethernet.network"
+        systemctl daemon-reload
+        systemctl restart systemd-networkd
+        exit
+    else
+        mv .systemd.network systemd.network
+        echo "======================"
+        echo "the config should be copied to:"
+        echo -e "\e[31m/etc/systemd/network/\e[0m"
+        echo "and prefixed with"
+        echo -e "\e[31m10-\e[0m"
+        echo "and activated with"
+        echo -e "\e[31mdaemon-reload\e[0m"
+        echo -e "\e[31msystemctl restart systemd-networkd\e[0m"
+        echo "======================"
         exit
     fi
 elif [[ "$c1" == "2" ]] || [[ "$c1" == "2." ]] || [[ "$c1" == "networkmanager" ]];then
